@@ -11,8 +11,8 @@ CORS(app)
 # ===============================
 # CONFIGURATION
 # ===============================
-GITHUB_TOKEN = "YOUR_GITHUB_TOKEN_HERE"
-REPO = "stablesterling/Njora"
+GITHUB_TOKEN = "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"
+REPO = "stablesterling/Njora1"
 
 @app.post("/upload")
 def upload_image():
