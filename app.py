@@ -11,23 +11,24 @@ CORS(app)
 # ===============================
 # CONFIGURATION
 # ===============================
-GITHUB_TOKEN = "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"
-REPO = "stablesterling/Njora1"
+# Load from Railway environment variables
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+REPO = os.getenv("REPO", "stablesterling/Njora1")
 
-@app.post("/upload")
+@app.route("/upload", methods=["POST"])
 def upload_image():
-    file = request.files["file"]
-    
-    if not file:
+    if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
     
+    file = request.files["file"]
+
     filename = datetime.now().strftime("%Y%m%d%H%M%S_") + file.filename
     upload_path = f"uploads/{filename}"
 
     file_content = base64.b64encode(file.read()).decode("utf-8")
 
     url = f"https://api.github.com/repos/{REPO}/contents/{upload_path}"
-    
+
     payload = {
         "message": f"Uploaded {filename}",
         "content": file_content
@@ -39,8 +40,23 @@ def upload_image():
     }
 
     response = requests.put(url, json=payload, headers=headers)
-    return jsonify(response.json())
+
+    if response.status_code in [200, 201]:
+        return jsonify({
+            "status": "success",
+            "filename": filename,
+            "github_url": response.json().get("content", {}).get("html_url", "")
+        }), 200
+    else:
+        return jsonify({
+            "status": "error",
+            "details": response.json()
+        }), response.status_code
 
 
+# ===============================
+# RUN APP (Railway compatible)
+# ===============================
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
