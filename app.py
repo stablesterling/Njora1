@@ -1,62 +1,54 @@
 import base64
-import os
+from datetime import datetime
 from flask import Flask, request, jsonify
 import requests
-from datetime import datetime
 from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
 
 # ===============================
-# CONFIGURATION
+# CONFIGURATION (HARDCODED TOKEN)
 # ===============================
-# Load from Railway environment variables
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-REPO = os.getenv("REPO", "stablesterling/Njora1")
+GITHUB_TOKEN = "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"  # <-- Replace with your GitHub personal access token
+REPO = "stablesterling/Njora"         # <-- Your GitHub repo in username/repo format
 
-@app.route("/upload", methods=["POST"])
+@app.post("/upload")
 def upload_image():
-    if "file" not in request.files:
+    file = request.files.get("file")
+    
+    if not file:
         return jsonify({"error": "No file uploaded"}), 400
     
-    file = request.files["file"]
-
+    # Generate a unique filename
     filename = datetime.now().strftime("%Y%m%d%H%M%S_") + file.filename
     upload_path = f"uploads/{filename}"
 
+    # Convert file to base64
     file_content = base64.b64encode(file.read()).decode("utf-8")
 
+    # GitHub API URL
     url = f"https://api.github.com/repos/{REPO}/contents/{upload_path}"
-
+    
+    # Request payload
     payload = {
         "message": f"Uploaded {filename}",
         "content": file_content
     }
 
+    # Request headers
     headers = {
         "Authorization": f"Bearer {GITHUB_TOKEN}",
         "Content-Type": "application/json"
     }
 
+    # Send PUT request to GitHub
     response = requests.put(url, json=payload, headers=headers)
-
+    
     if response.status_code in [200, 201]:
-        return jsonify({
-            "status": "success",
-            "filename": filename,
-            "github_url": response.json().get("content", {}).get("html_url", "")
-        }), 200
+        return jsonify({"success": True, "data": response.json()})
     else:
-        return jsonify({
-            "status": "error",
-            "details": response.json()
-        }), response.status_code
+        return jsonify({"success": False, "error": response.json()}), response.status_code
 
-
-# ===============================
-# RUN APP (Railway compatible)
-# ===============================
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(port=5000, debug=True)
